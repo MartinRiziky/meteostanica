@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Meteostanica</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #050810;
+    --bg2: #090d1a;
+    --card: rgba(255,255,255,0.04);
+    --card-border: rgba(255,255,255,0.08);
+    --card-hover: rgba(255,255,255,0.07);
+    --accent1: #4fc3f7;
+    --accent2: #81d4fa;
+    --accent3: #29b6f6;
+    --text: #e8f4fd;
+    --muted: #4a6a8a;
+    --value-font: 'Space Mono', monospace;
+    --ui-font: 'Outfit', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--ui-font);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Animated star background */
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle var(--dur, 3s) ease-in-out infinite var(--delay, 0s);
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.3); }
+  }
+
+  /* Aurora background effect */
+  .aurora {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .aurora::before {
+    content: '';
+    position: absolute;
+    width: 120%;
+    height: 60%;
+    top: -20%;
+    left: -10%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(41,182,246,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 40%, rgba(129,212,250,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(79,195,247,0.05) 0%, transparent 40%);
+    animation: aurora-move 12s ease-in-out infinite alternate;
+  }
+  .aurora::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 40%;
+    bottom: 0;
+    background: radial-gradient(ellipse at 50% 100%, rgba(41,182,246,0.06) 0%, transparent 70%);
+  }
+  @keyframes aurora-move {
+    0% { transform: translateX(-5%) scaleY(1); }
+    100% { transform: translateX(5%) scaleY(1.1); }
+  }
+
+  /* Grid lines background */
+  .grid {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      linear-gradient(rgba(79,195,247,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,195,247,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 2rem;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 3rem;
+    animation: fade-down 0.8s ease both;
+  }
+  .header-tag {
+    display: inline-block;
+    font-family: var(--value-font);
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    color: var(--accent1);
+    border: 1px solid rgba(79,195,247,0.3);
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+  }
+  .header h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #e8f4fd 0%, #4fc3f7 50%, #81d4fa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+  }
+  .header p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+  }
+
+  /* Status indicator */
+  .status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 2.5rem;
+    animation: fade-down 0.8s 0.2s ease both;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 8px #4ade80;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  .status-dot.offline { background: #f87171; box-shadow: 0 0 8px #f87171; animation: none; }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
+  }
+  .status-text {
+    font-family: var(--value-font);
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* Cards grid */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 1.6rem 1.2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+    animation: fade-up 0.6s ease both;
+  }
+  .card:nth-child(1) { animation-delay: 0.1s; }
+  .card:nth-child(2) { animation-delay: 0.2s; }
+  .card:nth-child(3) { animation-delay: 0.3s; }
+  .card:nth-child(4) { animation-delay: 0.4s; }
+  .card:nth-child(5) { animation-delay: 0.5s; }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(79,195,247,0.05) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .card:hover { transform: translateY(-4px); background: var(--card-hover); border-color: rgba(79,195,247,0.2); }
+  .card:hover::before { opacity: 1; }
+
+  /* Accent line top of card */
+  .card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .card:hover::after { opacity: 0.6; }
+
+  .card-icon {
+    font-size: 1.6rem;
+    margin-bottom: 0.8rem;
+    display: block;
+  }
+  .card-value {
+    font-family: var(--value-font);
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+    line-height: 1;
+    transition: color 0.3s ease;
+  }
+  .card-value.loaded { color: var(--accent1); }
+  .card-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* Large temp card */
+  .card.featured {
+    grid-column: span 3;
+    padding: 2rem;
+  }
+  .card.featured .card-value {
+    font-size: 3rem;
+  }
+  .card:not(.featured) {
+    grid-column: span 2;
+  }
+  @media (max-width: 600px) {
+    .cards { grid-template-columns: 1fr; }
+    .card.featured { grid-column: span 1; }
+    .card.featured .card-value { font-size: 2rem; }
+    .card:not(.featured) { grid-column: span 1; }
+  }
+
+  /* Last update */
+  .last-update {
+    text-align: center;
+    font-family: var(--value-font);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    animation: fade-up 0.6s 0.6s ease both;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    animation: fade-up 0.6s 0.7s ease both;
+  }
+  .footer a { color: var(--accent1); text-decoration: none; }
+
+  @keyframes fade-down {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background layers -->
+<div class="aurora"></div>
+<div class="grid"></div>
+<div class="stars" id="stars"></div>
+
+<div class="container">
+  <div class="header">
+    <div class="header-tag">IoT · Live Data</div>
+    <h1>Meteostanica</h1>
+    <p>Arduino Uno WiFi R2 · Firebase Realtime Database</p>
+  </div>
+
+  <div class="status">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-text" id="statusText">ČAKÁM NA DÁTA...</span>
+  </div>
+
+  <div class="cards">
+    <div class="card featured">
+      <span class="card-icon">🌡️</span>
+      <div class="card-value" id="temp">– °C</div>
+      <div class="card-label">Teplota</div>
+    </div>
+    <div class="card featured">
+      <span class="card-icon">💧</span>
+      <div class="card-value" id="hum">– %</div>
+      <div class="card-label">Vlhkosť vzduchu</div>
+    </div>
+    <div class="card">
+      <span class="card-icon">💨</span>
+      <div class="card-value" id="wind">– km/h</div>
+      <div class="card-label">Rýchlosť vetra</div>
+    </div>
+    <div class="card">
+      <span class="card-icon">🧭</span>
+      <div class="card-value" id="dir" style="font-size:1.2rem">–</div>
+      <div class="card-label">Smer vetra</div>
+    </div>
+    <div class="card">
+      <span class="card-icon">🌧️</span>
+      <div class="card-value" id="rain">– mm</div>
+      <div class="card-label">Zrážky</div>
+    </div>
+  </div>
+
+  <div class="last-update" id="lastUpdate">POSLEDNÁ AKTUALIZÁCIA: –</div>
+
+  <div class="footer">
+    Bakalárska práca · Martin Riziky · UKF Nitra 2026 ·
+    <a href="https://github.com" target="_blank">GitHub</a>
+  </div>
+</div>
+
+<!-- Stars generator -->
+<script>
+  const starsEl = document.getElementById('stars');
+  for (let i = 0; i < 120; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2 + 0.5;
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      top:${Math.random()*100}%;
+      left:${Math.random()*100}%;
+      --dur:${2+Math.random()*4}s;
+      --delay:${Math.random()*4}s;
+    `;
+    starsEl.appendChild(s);
+  }
+</script>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    databaseURL: "https://pocasie-6c962-default-rtdb.firebaseio.com"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const dataRef = ref(db, "meteostanica/aktualne");
+
+  const dot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+
+  let lastDataTime = 0;
+
+  function setLoaded(id, val) {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    el.classList.add('loaded');
+  }
+
+  onValue(dataRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      lastDataTime = Date.now();
+
+      setLoaded('temp', data.teplota.toFixed(1) + ' °C');
+      setLoaded('hum', data.vlhkost.toFixed(1) + ' %');
+      setLoaded('wind', data.rychlost_vetra.toFixed(1) + ' km/h');
+      setLoaded('dir', data.smer_vetra);
+      setLoaded('rain', data.zrazky.toFixed(2) + ' mm');
+
+      dot.classList.remove('offline');
+      statusText.textContent = 'ŽIVÉ DÁTA · ONLINE';
+
+      const now = new Date();
+      document.getElementById('lastUpdate').textContent =
+        'POSLEDNÁ AKTUALIZÁCIA: ' + now.toLocaleTimeString('sk-SK');
+    } else {
+      dot.classList.add('offline');
+      statusText.textContent = 'ARDUINO OFFLINE';
+    }
+  }, (error) => {
+    dot.classList.add('offline');
+    statusText.textContent = 'CHYBA PRIPOJENIA';
+  });
+
+  // kontrola kazdych 60 sekund ci Arduino stale odosiela data
+  setInterval(() => {
+    if (lastDataTime > 0 && Date.now() - lastDataTime > 90000) {
+      dot.classList.add('offline');
+      statusText.textContent = 'ARDUINO OFFLINE';
+    }
+  }, 60000);
+</script>
+</body>
+</html>
